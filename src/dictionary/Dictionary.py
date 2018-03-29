@@ -18,7 +18,7 @@ class Dictionary(object):
     if materialProperties == None:
       self.materialProperties = MaterialProperties(materialsFlag='FISP', plottingFlag=True)
     if sequenceProperties == None:
-      self.sequenceProperties = SequenceProperties()
+      self.sequenceProperties = SequenceProperties(sequenceFlag='bSSFP', plottingFlag=True)
 
     ### Material Properties
     # Populate attribute for number of material properties
