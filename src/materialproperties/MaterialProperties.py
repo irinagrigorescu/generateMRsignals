@@ -1,33 +1,33 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
+import csv
 
 
 class MaterialProperties(object):
   """
     materialProperties = a list of M (T1, T2, df) tuples in ms/kHz
   """
-  def __init__(self, materialsFlag='default', plottingFlag=False, 
-                     customValues={'T1': [600], 'T2' : [80], 'df': [0]}):
+  def __init__(self, materialAttr, plottingFlag=False):
     # Create options for the materials flag
     # by mapping the input value to a function
     optionsForMaterials = {'default' : self.__setDefaultMaterialProperties,
-                           'bSSFP'   : self.__setBSSFPMaterialProperties,
-                           'FISP'    : self.__setFISPMaterialProperties,
+                           'bssfp'   : self.__setBSSFPMaterialProperties,
+                           'fisp'    : self.__setFISPMaterialProperties,
                            'custom'  : self.__setCustomMaterialProperties }
-    # In case custom values are needed, I need this to exist for the function
-    self.__customValues = customValues
 
     # Call the appropriate function to create the attributes for this class
-    optionsForMaterials[materialsFlag]()
+    optionsForMaterials[materialAttr['type']](materialAttr)
 
     # Plot if requested      
     if plottingFlag == True:
       self.__plotThemMaterials()
 
 
-  # DEFAULT: Sets the material tuples to GM,WM,CSF,Fat default values for 1.5T
-  def __setDefaultMaterialProperties(self):
+  """
+      DEFAULT: Sets the material tuples to GM,WM,CSF,Fat default values for 1.5T
+  """
+  def __setDefaultMaterialProperties(self, materialAttributes):
     # Create default GM/WM/CSF/Fat
     self.T1 = np.array([950, 600, 4500, 250])
     self.T2 = np.array([100,  80, 2200,  60])
@@ -35,8 +35,10 @@ class MaterialProperties(object):
     # Create the material tuples array
     self.__createSetOfTuples()
 
-  # BSSFP: Sets the material tuples to T1/T2/df values from bSSFP paper
-  def __setBSSFPMaterialProperties(self):
+  """
+      BSSFP: Sets the material tuples to T1/T2/df values from bSSFP paper
+   """
+  def __setBSSFPMaterialProperties(self, materialAttributes):
     # T1 ranges from 100ms to 5000ms with different timesteps
     self.T1 = np.concatenate((
           np.arange( 100,2020, 20),  # from 100ms to 2000ms dt = 20ms
@@ -60,8 +62,10 @@ class MaterialProperties(object):
     # Create the material tuples array
     self.__createSetOfTuples()
 
-  # FISP: Sets the material tuples to T1/T2/df values from FISP paper
-  def __setFISPMaterialProperties(self):
+  """
+      FISP: Sets the material tuples to T1/T2/df values from FISP paper
+  """
+  def __setFISPMaterialProperties(self, materialAttributes):
     # T1 ranges from 
     self.T1 = np.concatenate((
           np.arange(  20,3010, 10),  # from   20ms to 3000ms dt =  10ms
@@ -77,12 +81,36 @@ class MaterialProperties(object):
     # Create the material tuples array
     self.__createSetOfTuples()
 
-  # Custom: Sets the material tuples to T1/T2/df values given by user
-  def __setCustomMaterialProperties(self):
+  """
+      Custom: Sets the material tuples to T1/T2/df values given by user
+  """
+  def __setCustomMaterialProperties(self, materialAttributes):
+    # Set other properties
+    filename = materialAttributes['filename'];
+    
+    # Create empty dictionary
+    mat = {};
+    
+    # Read file
+    with open(filename, 'r') as theFile:
+      reader = csv.DictReader(theFile)
+      # Each line
+      for line in reader:
+        # The keys (header of file)
+        for myKey in line.keys():
+          # Append to existing key
+          if myKey in mat:
+            mat[myKey] = np.append(mat[myKey], line[myKey]);
+          # Or create new key with empty list
+          else:
+            mat[myKey] = [];
+            mat[myKey] = np.append(mat[myKey], line[myKey]);
+  
     # Populate the with the custom values
-    self.T1 = np.array(self.__customValues['T1'])
-    self.T2 = np.array(self.__customValues['T2'])
-    self.df = np.array(self.__customValues['df'])
+    self.T1 = [float(x) for x in np.unique(mat['T1'])];
+    self.T2 = [float(x) for x in np.unique(mat['T2'])];
+    self.df = [float(x) for x in np.unique(mat['df'])];
+    
     # Create the material tuples array
     self.__createSetOfTuples()
 
@@ -109,7 +137,7 @@ class MaterialProperties(object):
                 materialTuplesTemp[2, idx_M] = self.df[idDf]
                 idx_M = idx_M + 1;
 
-    print "Done"
+    print("Done")
     # Actual number of material tuples
     self.nMaterialTuples = idx_M;
 
@@ -119,8 +147,10 @@ class MaterialProperties(object):
     
   # Plots the material properties
   def __plotThemMaterials(self):
+    print("\n~~~MATERIAL PROPERTIES~~~\n")
+
     # Create figure
-    fig = plt.figure()
+    fig = plt.figure(figsize=(10,5))
     # Add subplot
     ax  = fig.add_subplot(111) # row-col-num
     # 3D projection
